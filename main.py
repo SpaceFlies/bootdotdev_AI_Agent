@@ -5,7 +5,7 @@ import argparse
 from google.genai import types
 from prompts import system_prompt
 from config import MODEL_NAME
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -28,13 +28,11 @@ def main():
     config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
     )
     
-    if response.usage_metadata != None:
-        prompt_tokens = response.usage_metadata.prompt_token_count
-        response_tokens = response.usage_metadata.candidates_token_count
 
-    else:
-        prompt_tokens = "N/A"
-        response_tokens = "N/A"
+    prompt_tokens = response.usage_metadata.prompt_token_count if response.usage_metadata != None else "N/A"
+    response_tokens = response.usage_metadata.candidates_token_count if response.usage_metadata != None else "N/A"
+
+    func_res_list = []
     
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")    
@@ -43,11 +41,23 @@ def main():
     if response.candidates[0].content.parts[0].function_call:
         function_call = response.candidates[0].content.parts[0].function_call
         
-        
-        print(f"Calling function: {function_call.name}({function_call.args})")
-        
+        function_call_result = call_function(function_call, verbose=args.verbose)
+        if not function_call_result.parts:
+            raise Exception("Empty parts list from call_function")
+        if not function_call_result.parts[0].function_response:
+            raise Exception("Function response from call_function was None or not a FunctionResponse")
+        if not function_call_result.parts[0].function_response.response:
+            raise Exception("The response from the function_response of call_function was None")
+        func_res_list.append(function_call_result.parts[0])
+        if args.verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
     else:
         print(f"Response: \n{response.text}")
+
+    
+        #print(f"Calling function: {function_call.name}({function_call.args})")
+        
+    
     
 
 

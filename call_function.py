@@ -40,6 +40,8 @@ def call_function(function_call, verbose=False):
     args = dict(function_call.args) if function_call.args else {}
     args["working_directory"] = "./calculator"
 
+    function_result = function_map[function_name](**args)
+
     return types.Content(
     role="tool",
     parts=[

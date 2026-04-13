@@ -5,7 +5,7 @@ from google.genai import types
 
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
-    description=("runs a python file with optional arguments like 'run main.py'"),
+    description=("runs a python file with optional arguments like 'run main.py' or 'run tests.py'"),
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
