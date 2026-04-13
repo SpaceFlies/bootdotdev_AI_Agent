@@ -3,33 +3,9 @@ from dotenv import load_dotenv
 from google import genai
 import argparse
 from google.genai import types
-
-
-###Models and limits###
-"""
-gemini-2.5-flash
-5 requests per minute
-250k tokens per minute
-20 requests per day
-
-
-gemini-2.5-flash-lite
-10 requests per minute
-250k tokens per minute
-20 requests per day
-
-Gemini 3 Flash
-gemini-3-flash-preview
-5 requests per minute
-250k tokens per minute
-20 requests per day
-
-Gemini 3.1 Flash Lite
-gemini-3.1-flash-lite-preview
-15 requests per minute
-250k tokens per minute
-500 requests per day
-"""
+from prompts import system_prompt
+from config import MODEL_NAME
+from call_function import available_functions
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -47,22 +23,31 @@ def main():
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
     
     response = client.models.generate_content(
-        model="gemini-3.1-flash-lite-preview",
-        contents= messages
+    model=MODEL_NAME,
+    contents=messages,
+    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
     )
     
     if response.usage_metadata != None:
         prompt_tokens = response.usage_metadata.prompt_token_count
         response_tokens = response.usage_metadata.candidates_token_count
+
     else:
         prompt_tokens = "N/A"
         response_tokens = "N/A"
-
+    
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")    
         print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
     
-    print(f"Response: \n{response.text}")
+    if response.candidates[0].content.parts[0].function_call:
+        function_call = response.candidates[0].content.parts[0].function_call
+        
+        
+        print(f"Calling function: {function_call.name}({function_call.args})")
+        
+    else:
+        print(f"Response: \n{response.text}")
     
 
 
