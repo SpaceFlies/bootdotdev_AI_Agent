@@ -5,7 +5,10 @@ from google.genai import types
 
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
-    description=("runs a python file with optional arguments like 'run main.py' or 'run tests.py'"),
+    description=("Run or Execute a Python file located inside the working directory. "
+    "This function is ONLY for running Python scripts. "
+    "It accepts a file path and an optional list of string arguments "
+    "that will be passed directly to the Python interpreter."),
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
