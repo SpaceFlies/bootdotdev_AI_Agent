@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 from google import genai
 import argparse
@@ -21,41 +22,52 @@ args = parser.parse_args()
 
 def main():
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
-    
-    response = client.models.generate_content(
-    model=MODEL_NAME,
-    contents=messages,
-    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
-    )
-    
+    for _ in range(20):
+        response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=messages,
+        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
+        )
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate)
 
-    prompt_tokens = response.usage_metadata.prompt_token_count if response.usage_metadata != None else "N/A"
-    response_tokens = response.usage_metadata.candidates_token_count if response.usage_metadata != None else "N/A"
+        prompt_tokens = response.usage_metadata.prompt_token_count if response.usage_metadata != None else "N/A"
+        response_tokens = response.usage_metadata.candidates_token_count if response.usage_metadata != None else "N/A"
 
-    func_res_list = []
-    
-    if args.verbose:
-        print(f"User prompt: {args.user_prompt}")    
-        print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
-    
-    if response.candidates[0].content.parts[0].function_call:
-        function_call = response.candidates[0].content.parts[0].function_call
+        func_res_list = []
         
-        function_call_result = call_function(function_call, verbose=args.verbose)
-        if not function_call_result.parts:
-            raise Exception("Empty parts list from call_function")
-        if not function_call_result.parts[0].function_response:
-            raise Exception("Function response from call_function was None or not a FunctionResponse")
-        if not function_call_result.parts[0].function_response.response:
-            raise Exception("The response from the function_response of call_function was None")
-        func_res_list.append(function_call_result.parts[0])
         if args.verbose:
-            print(f"-> {function_call_result.parts[0].function_response.response}")
-    else:
-        print(f"Response: \n{response.text}")
+            print(f"User prompt: {args.user_prompt}")    
+            print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
+        
+        if response.candidates[0].content.parts[0].function_call:
+            function_call = response.candidates[0].content.parts[0].function_call
+            
+            function_call_result = call_function(function_call, verbose=args.verbose)
+            if not function_call_result.parts:
+                raise Exception("Empty parts list from call_function")
+            if not function_call_result.parts[0].function_response:
+                raise Exception("Function response from call_function was None or not a FunctionResponse")
+            if not function_call_result.parts[0].function_response.response:
+                raise Exception("The response from the function_response of call_function was None")
+            func_res_list.append(function_call_result.parts[0])
+            if args.verbose:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+        
+            messages.append(types.Content(role="user", parts=func_res_list))
+        
+        else:
+            print(f"Response: \n{response.text}")
+            break
 
-    
-        #print(f"Calling function: {function_call.name}({function_call.args})")
+        print("Iteration: ", _)
+        if _ == 20:
+            print("Reached maximum number of iterations. Exiting...")
+            sys.exit(1)
+
+        
+            #print(f"Calling function: {function_call.name}({function_call.args})")
         
     
     
